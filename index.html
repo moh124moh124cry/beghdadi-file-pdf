@@ -13,12 +13,16 @@
             --primary-color: #007bff;
             --secondary-color: #6c757d;
             --success-color: #28a745;
-            --bg-color: #f8f9fa;
+            --bg-color: #121212; /* خلفية الموقع المظلمة */
+            --panel-bg: #1e1e1e; /* خلفية المساحات الداخلية */
+            --text-color: #e0e0e0; /* لون النص الفاتح */
+            --border-color: #333333; /* لون الحدود المظلم */
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
+            color: var(--text-color);
             margin: 0;
             padding: 0;
             display: flex;
@@ -27,14 +31,14 @@
         }
 
         header {
-            background-color: #333;
+            background-color: #000000;
             color: white;
             width: 100%;
             text-align: center;
             padding: 15px 0;
             font-size: 24px;
             font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
         .container {
@@ -47,14 +51,14 @@
         .kids-banner {
             width: 100%;
             height: 200px;
-            background-color: #e9ecef;
-            border: 2px dashed #adb5bd;
+            background-color: var(--panel-bg);
+            border: 2px dashed var(--border-color);
             border-radius: 10px;
             display: flex;
             justify-content: center;
             align-items: center;
             margin-bottom: 20px;
-            color: #6c757d;
+            color: #888;
             font-size: 18px;
             overflow: hidden;
         }
@@ -80,16 +84,17 @@
         .upload-btn:hover { background-color: #0056b3; }
         #fileInput { display: none; }
 
-        /* شريط أدوات التعديل الجديد */
+        /* شريط أدوات التعديل */
         .edit-toolbar {
             display: none;
             flex-wrap: wrap;
             gap: 10px;
             justify-content: center;
             margin-bottom: 15px;
-            background-color: #e9ecef;
+            background-color: var(--panel-bg);
             padding: 10px;
             border-radius: 8px;
+            border: 1px solid var(--border-color);
         }
 
         .edit-toolbar button {
@@ -101,23 +106,40 @@
             font-weight: bold;
         }
 
-        .tool-active { outline: 3px solid #333; }
+        .tool-active { outline: 3px solid #007bff; }
 
         .preview-area {
             width: 100%;
             min-height: 300px;
-            background-color: white;
-            border: 1px solid #dee2e6;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
             border-radius: 10px;
             margin-bottom: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
             padding: 10px;
             box-sizing: border-box;
-            overflow: hidden;
             position: relative;
+            overflow: hidden;
+        }
+
+        /* تنسيق مربع النص العائم في الوضع المظلم */
+        #floatingTextInput {
+            position: absolute;
+            display: none;
+            border: 2px dashed var(--primary-color);
+            background-color: rgba(30, 30, 30, 0.9);
+            font-size: 18px;
+            padding: 5px;
+            z-index: 100;
+            min-width: 150px;
+            border-radius: 4px;
+            outline: none;
+            color: white;
+            font-weight: bold;
+            direction: rtl;
         }
 
         .controls {
@@ -161,17 +183,18 @@
 
         <!-- شريط أدوات التعديل -->
         <div class="edit-toolbar" id="editToolbar">
-            <button id="toolDraw" style="background-color: #dc3545; color: white;">🖌️ رسم (أحمر)</button>
-            <button id="toolEraser" style="background-color: #ffffff; color: black; border: 1px solid #ccc;">🧽 طامس (مسح النص)</button>
-            <button id="toolText" style="background-color: #007bff; color: white;">🔤 إضافة كتابة</button>
+            <button id="toolDraw" style="background-color: #dc3545; color: white;">🖌️ رسم حر</button>
+            <button id="toolEraser" style="background-color: #e0e0e0; color: black; border: 1px solid #ccc;">🧽 طامس (للمسح)</button>
+            <button id="toolText" style="background-color: #007bff; color: white;">🔤 إضافة نص</button>
         </div>
 
         <div class="preview-area" id="previewArea">
-            <span style="color: #6c757d;">ستظهر معاينة الملف هنا...</span>
+            <span style="color: #888;" id="previewPlaceholder">ستظهر معاينة الملف هنا...</span>
+            <input type="text" id="floatingTextInput" placeholder="اكتب هنا ثم اضغط خارج المربع...">
         </div>
 
         <div class="controls">
-            <button class="btn-edit" id="editBtn">تعديل الملف (تحويل A4)</button>
+            <button class="btn-edit" id="editBtn">تعديل الملف (A4)</button>
             <button class="btn-confirm" id="confirmBtn">تأكيد التعديلات</button>
             <button class="btn-export-pdf" id="exportPdfBtn">تصدير كـ PDF</button>
             <button class="btn-print" id="printBtn">طباعة</button>
@@ -185,11 +208,15 @@
         const fileInput = document.getElementById('fileInput');
         const previewArea = document.getElementById('previewArea');
         const editToolbar = document.getElementById('editToolbar');
+        const floatingInput = document.getElementById('floatingTextInput');
+        const previewPlaceholder = document.getElementById('previewPlaceholder');
         
         let isDrawing = false;
         let editModeActive = false;
         let currentTool = 'draw'; 
         let ctx = null;
+        let savedTextX = 0;
+        let savedTextY = 0;
 
         // 1. رفع ومعاينة الملف
         fileInput.addEventListener('change', function(event) {
@@ -197,8 +224,13 @@
             if (file) {
                 const fileURL = URL.createObjectURL(file);
                 const fileType = file.type;
-                previewArea.innerHTML = ''; 
+                
+                const oldMedia = previewArea.querySelectorAll('img, canvas');
+                oldMedia.forEach(el => el.remove());
+                
+                previewPlaceholder.style.display = 'none';
                 editToolbar.style.display = 'none';
+                floatingInput.style.display = 'none';
                 editModeActive = false;
 
                 if (fileType.startsWith('image/')) {
@@ -211,7 +243,8 @@
                     previewArea.appendChild(img);
                 } 
                 else if (fileType === 'application/pdf') {
-                    previewArea.innerHTML = '<span style="color: #6c757d;">جاري معالجة الـ PDF...</span>';
+                    previewPlaceholder.style.display = 'block';
+                    previewPlaceholder.innerHTML = 'جاري معالجة الـ PDF...';
                     const pdfjsLib = window['pdfjs-dist/build/pdf'];
                     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
@@ -227,7 +260,8 @@
                                 canvas.style.maxWidth = '100%';
                                 canvas.style.maxHeight = '400px';
                                 canvas.style.borderRadius = '8px';
-                                previewArea.innerHTML = ''; 
+                                
+                                previewPlaceholder.style.display = 'none';
                                 previewArea.appendChild(canvas);
                                 page.render({ canvasContext: context, viewport: viewport });
                             });
@@ -237,7 +271,7 @@
             }
         });
 
-        // 2. تفعيل التعديل والتحويل الإجباري إلى A4
+        // 2. تفعيل التعديل
         const editBtn = document.getElementById('editBtn');
         editBtn.addEventListener('click', function() {
             const previewImage = previewArea.querySelector('img');
@@ -248,39 +282,33 @@
                 return;
             }
 
-            // إنشاء Canvas بمقاس A4 (1240 x 1754 بكسل)
             const a4Canvas = document.createElement('canvas');
             a4Canvas.width = 1240;
             a4Canvas.height = 1754;
             ctx = a4Canvas.getContext('2d');
-
-            // خلفية بيضاء للورقة
             ctx.fillStyle = "#ffffff";
             ctx.fillRect(0, 0, a4Canvas.width, a4Canvas.height);
 
-            // رسم الصورة أو ملف الـ PDF داخل ورقة الـ A4
             if (previewImage) {
                 ctx.drawImage(previewImage, 0, 0, a4Canvas.width, a4Canvas.height);
+                previewImage.remove();
             } else if (canvas) {
                 ctx.drawImage(canvas, 0, 0, a4Canvas.width, a4Canvas.height);
+                canvas.remove();
             }
 
-            // عرض لوحة الرسم الجديدة
             a4Canvas.style.maxWidth = '100%';
             a4Canvas.style.maxHeight = '400px';
-            a4Canvas.style.border = '3px dashed #ffc107';
+            a4Canvas.style.border = '3px dashed #007bff';
             a4Canvas.style.touchAction = 'none';
 
-            previewArea.innerHTML = '';
             previewArea.appendChild(a4Canvas);
             canvas = a4Canvas;
 
-            // إظهار شريط الأدوات
             editModeActive = true;
             editToolbar.style.display = 'flex';
             setTool('draw');
 
-            // وظائف الرسم والكتابة
             const getPos = (e) => {
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
@@ -291,20 +319,30 @@
                     clientX = e.touches[0].clientX;
                     clientY = e.touches[0].clientY;
                 }
-                return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+                return { 
+                    x: (clientX - rect.left) * scaleX, 
+                    y: (clientY - rect.top) * scaleY,
+                    screenX: clientX - rect.left,
+                    screenY: clientY - rect.top
+                };
             };
 
             const startAction = (e) => {
-                if(e.cancelable) e.preventDefault();
+                if(e.cancelable && currentTool !== 'text') e.preventDefault();
+                
+                if (floatingInput.style.display === 'block') return;
+
                 const pos = getPos(e);
                 
                 if (currentTool === 'text') {
-                    const userText = prompt('أدخل النص الذي تريد إضافته هنا:');
-                    if (userText) {
-                        ctx.font = 'bold 50px Arial';
-                        ctx.fillStyle = '#000000'; // نص أسود
-                        ctx.fillText(userText, pos.x, pos.y);
-                    }
+                    floatingInput.style.left = (pos.screenX + 10) + 'px';
+                    floatingInput.style.top = (pos.screenY + 10) + 'px';
+                    floatingInput.style.display = 'block';
+                    floatingInput.value = '';
+                    floatingInput.focus();
+                    
+                    savedTextX = pos.x;
+                    savedTextY = pos.y + 40; 
                 } else {
                     isDrawing = true;
                     ctx.beginPath();
@@ -326,13 +364,27 @@
             canvas.onmousemove = drawAction;
             canvas.onmouseup = stopAction;
             canvas.onmouseout = stopAction;
-
             canvas.ontouchstart = startAction;
             canvas.ontouchmove = drawAction;
             canvas.ontouchend = stopAction;
         });
 
-        // تبديل الأدوات
+        // طباعة النص عند إغلاق أو فقدان التركيز لمربع النص العائم
+        floatingInput.addEventListener('blur', function() {
+            if (this.value.trim() !== '') {
+                ctx.font = 'bold 60px Arial'; 
+                ctx.fillStyle = '#000000'; 
+                ctx.fillText(this.value, savedTextX, savedTextY);
+            }
+            this.style.display = 'none';
+        });
+
+        floatingInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                this.blur();
+            }
+        });
+
         function setTool(toolName) {
             currentTool = toolName;
             document.getElementById('toolDraw').classList.remove('tool-active');
@@ -346,8 +398,8 @@
                 ctx.lineCap = 'round';
             } else if (toolName === 'eraser') {
                 document.getElementById('toolEraser').classList.add('tool-active');
-                ctx.strokeStyle = '#ffffff'; // لون أبيض للطمس
-                ctx.lineWidth = 40; // حجم كبير للمسح السريع
+                ctx.strokeStyle = '#ffffff'; 
+                ctx.lineWidth = 60; 
                 ctx.lineCap = 'round';
             } else if (toolName === 'text') {
                 document.getElementById('toolText').classList.add('tool-active');
@@ -369,13 +421,13 @@
                 canvas.ontouchstart = null; canvas.ontouchmove = null; canvas.ontouchend = null;
                 editModeActive = false;
                 editToolbar.style.display = 'none';
-                alert('تم حفظ التعديلات بمقاس A4! يمكنك الآن استخراج الملف.');
+                floatingInput.style.display = 'none';
+                alert('تم حفظ التعديلات! يمكنك الآن تصدير الملف.');
             }
         });
 
-        // 4. تصدير كصورة
-        const exportImgBtn = document.getElementById('exportImgBtn');
-        exportImgBtn.addEventListener('click', function() {
+        // تصدير والطباعة والضغط
+        document.getElementById('exportImgBtn').addEventListener('click', function() {
             const canvas = previewArea.querySelector('canvas');
             if (canvas) {
                 const link = document.createElement('a');
@@ -385,9 +437,7 @@
             }
         });
 
-        // 5. تصدير كـ PDF
-        const exportPdfBtn = document.getElementById('exportPdfBtn');
-        exportPdfBtn.addEventListener('click', function() {
+        document.getElementById('exportPdfBtn').addEventListener('click', function() {
             const canvas = previewArea.querySelector('canvas');
             if (canvas) {
                 const { jsPDF } = window.jspdf;
@@ -398,15 +448,14 @@
             }
         });
 
-        // 6. الطباعة
         document.getElementById('printBtn').addEventListener('click', () => window.print());
 
-        // 7. ضغط الصورة
         document.getElementById('compressBtn').addEventListener('click', function() {
             const canvas = previewArea.querySelector('canvas');
             if (canvas) {
                 const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.5);
-                previewArea.innerHTML = '';
+                const oldMedia = previewArea.querySelectorAll('canvas');
+                oldMedia.forEach(el => el.remove());
                 const newImg = document.createElement('img');
                 newImg.src = compressedDataUrl;
                 newImg.style.maxWidth = '100%';
