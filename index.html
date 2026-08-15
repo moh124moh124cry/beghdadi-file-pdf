@@ -8,6 +8,9 @@
     <!-- استدعاء مكتبة قراءة ملفات PDF الاحترافية لدعم الهواتف -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     
+    <!-- استدعاء مكتبة تحويل الصور إلى PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
     <style>
         :root {
             --primary-color: #007bff;
@@ -146,7 +149,6 @@
         
         <!-- مساحة بانر الأبناء -->
         <div class="kids-banner" id="bannerArea">
-            <!-- تم تفعيل مسار الصورة الصحيح -->
             <img src="kids.jpg" alt="صورة الأبناء" style="display: block; width: 100%; height: 100%; object-fit: cover;">
         </div>
 
@@ -184,10 +186,9 @@
                 const fileURL = URL.createObjectURL(file);
                 const fileType = file.type;
 
-                previewArea.innerHTML = ''; // تفريغ المعاينة من النص
+                previewArea.innerHTML = ''; 
 
                 if (fileType.startsWith('image/')) {
-                    // التعامل مع الصور
                     const img = document.createElement('img');
                     img.src = fileURL;
                     img.style.maxWidth = '100%';
@@ -197,7 +198,6 @@
                     previewArea.appendChild(img);
                 } 
                 else if (fileType === 'application/pdf') {
-                    // التعامل مع ملفات PDF للهواتف باستخدام مكتبة PDF.js
                     previewArea.innerHTML = '<span style="color: #6c757d;">جاري معالجة الـ PDF...</span>';
                     
                     const pdfjsLib = window['pdfjs-dist/build/pdf'];
@@ -243,7 +243,7 @@
             window.print();
         });
 
-        // 3. تفعيل زر تصدير الصورة (يدعم استخراج الصور واستخراج صفحات الـ PDF المحولة)
+        // 3. تفعيل زر تصدير الصورة
         const exportImgBtn = document.getElementById('exportImgBtn');
         exportImgBtn.addEventListener('click', function() {
             const previewImage = previewArea.querySelector('img');
@@ -258,7 +258,6 @@
                 link.click();
                 document.body.removeChild(link);
             } else if (previewCanvas) {
-                // استخراج صفحة الـ PDF كصورة
                 link.href = previewCanvas.toDataURL('image/jpeg', 1.0);
                 link.download = 'BEGHDADI_PDF_Page.jpg';
                 document.body.appendChild(link);
@@ -267,6 +266,46 @@
             } else {
                 alert('الرجاء تحميل ملف أولاً لتتمكن من تصديره كصورة!');
             }
+        });
+
+        // 4. تفعيل زر تصدير كـ PDF
+        const exportPdfBtn = document.getElementById('exportPdfBtn');
+        exportPdfBtn.addEventListener('click', function() {
+            const previewImage = previewArea.querySelector('img');
+            const previewCanvas = previewArea.querySelector('canvas');
+            
+            if (!previewImage && !previewCanvas) {
+                alert('الرجاء تحميل صورة أولاً لتتمكن من تحويلها إلى PDF!');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4'); 
+            
+            let imgData = '';
+            let originalWidth = 0;
+            let originalHeight = 0;
+
+            if (previewImage) {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = previewImage.naturalWidth;
+                tempCanvas.height = previewImage.naturalHeight;
+                const ctx = tempCanvas.getContext('2d');
+                ctx.drawImage(previewImage, 0, 0);
+                imgData = tempCanvas.toDataURL('image/jpeg', 1.0);
+                originalWidth = previewImage.naturalWidth;
+                originalHeight = previewImage.naturalHeight;
+            } else if (previewCanvas) {
+                imgData = previewCanvas.toDataURL('image/jpeg', 1.0);
+                originalWidth = previewCanvas.width;
+                originalHeight = previewCanvas.height;
+            }
+
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (originalHeight * pdfWidth) / originalWidth;
+
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save('BEGHDADI_Converted.pdf');
         });
     </script>
 </body>
