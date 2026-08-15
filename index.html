@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BEGHDADI FILE PDF</title>
+    
+    <!-- استدعاء مكتبة قراءة ملفات PDF الاحترافية لدعم الهواتف -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    
     <style>
         :root {
             --primary-color: #007bff;
@@ -61,7 +65,6 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            display: none; /* سيتم تفعيلها عند وضع مسار الصورة */
         }
 
         /* زر رفع الملفات */
@@ -98,6 +101,9 @@
             justify-content: center;
             align-items: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
         }
 
         /* لوحة التحكم (الأزرار السفلية) */
@@ -139,10 +145,10 @@
     <div class="container">
         
         <!-- مساحة بانر الأبناء -->
-                <div class="kids-banner" id="bannerArea">
+        <div class="kids-banner" id="bannerArea">
+            <!-- تم تفعيل مسار الصورة الصحيح -->
             <img src="kids.jpg" alt="صورة الأبناء" style="display: block; width: 100%; height: 100%; object-fit: cover;">
-                </div>
-        
+        </div>
 
         <!-- زر تحميل الملف -->
         <button class="upload-btn" onclick="document.getElementById('fileInput').click()">حمل ملف</button>
@@ -165,47 +171,103 @@
 
     </div>
 
+    <!-- أكواد التشغيل JavaScript -->
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const previewArea = document.getElementById('previewArea');
+
+        // 1. تفعيل زر تحميل ومعاينة الملفات
+        fileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            
+            if (file) {
+                const fileURL = URL.createObjectURL(file);
+                const fileType = file.type;
+
+                previewArea.innerHTML = ''; // تفريغ المعاينة من النص
+
+                if (fileType.startsWith('image/')) {
+                    // التعامل مع الصور
+                    const img = document.createElement('img');
+                    img.src = fileURL;
+                    img.style.maxWidth = '100%';
+                    img.style.maxHeight = '400px';
+                    img.style.borderRadius = '8px';
+                    img.style.objectFit = 'contain';
+                    previewArea.appendChild(img);
+                } 
+                else if (fileType === 'application/pdf') {
+                    // التعامل مع ملفات PDF للهواتف باستخدام مكتبة PDF.js
+                    previewArea.innerHTML = '<span style="color: #6c757d;">جاري معالجة الـ PDF...</span>';
+                    
+                    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+                    file.arrayBuffer().then(data => {
+                        pdfjsLib.getDocument(data).promise.then(pdf => {
+                            pdf.getPage(1).then(page => {
+                                const scale = 1.5; 
+                                const viewport = page.getViewport({ scale: scale });
+
+                                const canvas = document.createElement('canvas');
+                                const context = canvas.getContext('2d');
+                                canvas.height = viewport.height;
+                                canvas.width = viewport.width;
+                                canvas.style.maxWidth = '100%';
+                                canvas.style.maxHeight = '400px';
+                                canvas.style.borderRadius = '8px';
+
+                                previewArea.innerHTML = ''; 
+                                previewArea.appendChild(canvas);
+
+                                const renderContext = {
+                                    canvasContext: context,
+                                    viewport: viewport
+                                };
+                                page.render(renderContext);
+                            });
+                        }).catch(error => {
+                            previewArea.innerHTML = '<span style="color: #dc3545;">عذراً، حدث خطأ أثناء قراءة الملف.</span>';
+                        });
+                    });
+                } 
+                else {
+                    previewArea.innerHTML = '<span style="color: #dc3545;">عذراً، يرجى رفع صورة أو ملف PDF فقط.</span>';
+                }
+            }
+        });
+
+        // 2. تفعيل زر الطباعة
+        const printBtn = document.getElementById('printBtn');
+        printBtn.addEventListener('click', function() {
+            window.print();
+        });
+
+        // 3. تفعيل زر تصدير الصورة (يدعم استخراج الصور واستخراج صفحات الـ PDF المحولة)
+        const exportImgBtn = document.getElementById('exportImgBtn');
+        exportImgBtn.addEventListener('click', function() {
+            const previewImage = previewArea.querySelector('img');
+            const previewCanvas = previewArea.querySelector('canvas');
+            
+            const link = document.createElement('a');
+
+            if (previewImage) {
+                link.href = previewImage.src;
+                link.download = 'BEGHDADI_Image.jpg';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else if (previewCanvas) {
+                // استخراج صفحة الـ PDF كصورة
+                link.href = previewCanvas.toDataURL('image/jpeg', 1.0);
+                link.download = 'BEGHDADI_PDF_Page.jpg';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                alert('الرجاء تحميل ملف أولاً لتتمكن من تصديره كصورة!');
+            }
+        });
+    </script>
 </body>
 </html>
-<script>
-    const fileInput = document.getElementById('fileInput');
-    const previewArea = document.getElementById('previewArea');
-
-    fileInput.addEventListener('change', function(event) {
-        const file = event.target.files[0];
-        
-        if (file) {
-            // إنشاء رابط محلي مؤقت للملف لتمكين عرضه
-            const fileURL = URL.createObjectURL(file);
-            const fileType = file.type;
-
-            // تفريغ مساحة المعاينة من النص الافتراضي
-            previewArea.innerHTML = '';
-
-            if (fileType.startsWith('image/')) {
-                // التعامل مع الصور
-                const img = document.createElement('img');
-                img.src = fileURL;
-                img.style.maxWidth = '100%';
-                img.style.maxHeight = '400px'; // تحديد أقصى ارتفاع ليتناسب مع شاشة الهاتف
-                img.style.borderRadius = '8px';
-                img.style.objectFit = 'contain';
-                previewArea.appendChild(img);
-            } 
-            else if (fileType === 'application/pdf') {
-                // التعامل مع ملفات PDF
-                const iframe = document.createElement('iframe');
-                iframe.src = fileURL;
-                iframe.width = '100%';
-                iframe.height = '400px';
-                iframe.style.border = 'none';
-                iframe.style.borderRadius = '8px';
-                previewArea.appendChild(iframe);
-            } 
-            else {
-                // رسالة خطأ في حال اختيار ملف غير مدعوم
-                previewArea.innerHTML = '<span style="color: #dc3545;">عذراً، يرجى رفع صورة أو ملف PDF فقط.</span>';
-            }
-        }
-    });
-</script>
