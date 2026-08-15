@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BEGHDADI FILE PDF</title>
     
-    <!-- استدعاء مكتبة قراءة ملفات PDF الاحترافية لدعم الهواتف -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    
-    <!-- استدعاء مكتبة تحويل الصور إلى PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <style>
@@ -29,7 +26,6 @@
             align-items: center;
         }
 
-        /* الشعار العلوي */
         header {
             background-color: #333;
             color: white;
@@ -48,7 +44,6 @@
             text-align: center;
         }
 
-        /* بانر صورة الأبناء */
         .kids-banner {
             width: 100%;
             height: 200px;
@@ -70,7 +65,6 @@
             object-fit: cover;
         }
 
-        /* زر رفع الملفات */
         .upload-btn {
             background-color: var(--primary-color);
             color: white;
@@ -83,16 +77,32 @@
             transition: 0.3s;
         }
 
-        .upload-btn:hover {
-            background-color: #0056b3;
-        }
+        .upload-btn:hover { background-color: #0056b3; }
+        #fileInput { display: none; }
 
-        /* إخفاء زر الإدخال الافتراضي */
-        #fileInput {
+        /* شريط أدوات التعديل الجديد */
+        .edit-toolbar {
             display: none;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 8px;
         }
 
-        /* مساحة المعاينة */
+        .edit-toolbar button {
+            padding: 8px 15px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .tool-active { outline: 3px solid #333; }
+
         .preview-area {
             width: 100%;
             min-height: 300px;
@@ -110,7 +120,6 @@
             position: relative;
         }
 
-        /* لوحة التحكم (الأزرار السفلية) */
         .controls {
             display: flex;
             flex-wrap: wrap;
@@ -134,37 +143,35 @@
         .btn-print { background-color: var(--secondary-color); }
         .btn-compress { background-color: #17a2b8; }
         .btn-export-img { background-color: #6610f2; }
-
-        .controls button:hover {
-            opacity: 0.8;
-        }
+        .controls button:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
 
-    <header>
-        BEGHDADI FILE PDF
-    </header>
+    <header>BEGHDADI FILE PDF</header>
 
     <div class="container">
         
-        <!-- مساحة بانر الأبناء -->
         <div class="kids-banner" id="bannerArea">
             <img src="kids.jpg" alt="صورة الأبناء" style="display: block; width: 100%; height: 100%; object-fit: cover;">
         </div>
 
-        <!-- زر تحميل الملف -->
         <button class="upload-btn" onclick="document.getElementById('fileInput').click()">حمل ملف</button>
         <input type="file" id="fileInput" accept="image/*, .pdf">
 
-        <!-- مساحة المعاينة -->
+        <!-- شريط أدوات التعديل -->
+        <div class="edit-toolbar" id="editToolbar">
+            <button id="toolDraw" style="background-color: #dc3545; color: white;">🖌️ رسم (أحمر)</button>
+            <button id="toolEraser" style="background-color: #ffffff; color: black; border: 1px solid #ccc;">🧽 طامس (مسح النص)</button>
+            <button id="toolText" style="background-color: #007bff; color: white;">🔤 إضافة كتابة</button>
+        </div>
+
         <div class="preview-area" id="previewArea">
             <span style="color: #6c757d;">ستظهر معاينة الملف هنا...</span>
         </div>
 
-        <!-- أزرار التحكم -->
         <div class="controls">
-            <button class="btn-edit" id="editBtn">تعديل الملف</button>
+            <button class="btn-edit" id="editBtn">تعديل الملف (تحويل A4)</button>
             <button class="btn-confirm" id="confirmBtn">تأكيد التعديلات</button>
             <button class="btn-export-pdf" id="exportPdfBtn">تصدير كـ PDF</button>
             <button class="btn-print" id="printBtn">طباعة</button>
@@ -174,23 +181,25 @@
 
     </div>
 
-    <!-- أكواد التشغيل JavaScript -->
     <script>
         const fileInput = document.getElementById('fileInput');
         const previewArea = document.getElementById('previewArea');
+        const editToolbar = document.getElementById('editToolbar');
         
-        // متغيرات للتحكم في وضع التعديل (الرسم)
         let isDrawing = false;
         let editModeActive = false;
+        let currentTool = 'draw'; 
+        let ctx = null;
 
-        // 1. تفعيل زر تحميل ومعاينة الملفات
+        // 1. رفع ومعاينة الملف
         fileInput.addEventListener('change', function(event) {
             const file = event.target.files[0];
-            
             if (file) {
                 const fileURL = URL.createObjectURL(file);
                 const fileType = file.type;
                 previewArea.innerHTML = ''; 
+                editToolbar.style.display = 'none';
+                editModeActive = false;
 
                 if (fileType.startsWith('image/')) {
                     const img = document.createElement('img');
@@ -203,7 +212,6 @@
                 } 
                 else if (fileType === 'application/pdf') {
                     previewArea.innerHTML = '<span style="color: #6c757d;">جاري معالجة الـ PDF...</span>';
-                    
                     const pdfjsLib = window['pdfjs-dist/build/pdf'];
                     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
@@ -212,7 +220,6 @@
                             pdf.getPage(1).then(page => {
                                 const scale = 1.5; 
                                 const viewport = page.getViewport({ scale: scale });
-
                                 const canvas = document.createElement('canvas');
                                 const context = canvas.getContext('2d');
                                 canvas.height = viewport.height;
@@ -220,139 +227,17 @@
                                 canvas.style.maxWidth = '100%';
                                 canvas.style.maxHeight = '400px';
                                 canvas.style.borderRadius = '8px';
-
                                 previewArea.innerHTML = ''; 
                                 previewArea.appendChild(canvas);
-
-                                const renderContext = {
-                                    canvasContext: context,
-                                    viewport: viewport
-                                };
-                                page.render(renderContext);
+                                page.render({ canvasContext: context, viewport: viewport });
                             });
-                        }).catch(error => {
-                            previewArea.innerHTML = '<span style="color: #dc3545;">عذراً، حدث خطأ أثناء قراءة الملف.</span>';
                         });
                     });
-                } 
-                else {
-                    previewArea.innerHTML = '<span style="color: #dc3545;">عذراً، يرجى رفع صورة أو ملف PDF فقط.</span>';
                 }
             }
         });
 
-        // 2. تفعيل زر الطباعة
-        const printBtn = document.getElementById('printBtn');
-        printBtn.addEventListener('click', function() {
-            window.print();
-        });
-
-        // 3. تفعيل زر تصدير الصورة
-        const exportImgBtn = document.getElementById('exportImgBtn');
-        exportImgBtn.addEventListener('click', function() {
-            const previewImage = previewArea.querySelector('img');
-            const previewCanvas = previewArea.querySelector('canvas');
-            const link = document.createElement('a');
-
-            if (previewImage) {
-                link.href = previewImage.src;
-                link.download = 'BEGHDADI_Image.jpg';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else if (previewCanvas) {
-                link.href = previewCanvas.toDataURL('image/jpeg', 1.0);
-                link.download = 'BEGHDADI_PDF_Page.jpg';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else {
-                alert('الرجاء تحميل ملف أولاً لتتمكن من تصديره كصورة!');
-            }
-        });
-
-        // 4. تفعيل زر تصدير كـ PDF
-        const exportPdfBtn = document.getElementById('exportPdfBtn');
-        exportPdfBtn.addEventListener('click', function() {
-            const previewImage = previewArea.querySelector('img');
-            const previewCanvas = previewArea.querySelector('canvas');
-            
-            if (!previewImage && !previewCanvas) {
-                alert('الرجاء تحميل صورة أولاً لتتمكن من تحويلها إلى PDF!');
-                return;
-            }
-
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4'); 
-            let imgData = '';
-            let originalWidth = 0;
-            let originalHeight = 0;
-
-            if (previewImage) {
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = previewImage.naturalWidth;
-                tempCanvas.height = previewImage.naturalHeight;
-                const ctx = tempCanvas.getContext('2d');
-                ctx.drawImage(previewImage, 0, 0);
-                imgData = tempCanvas.toDataURL('image/jpeg', 1.0);
-                originalWidth = previewImage.naturalWidth;
-                originalHeight = previewImage.naturalHeight;
-            } else if (previewCanvas) {
-                imgData = previewCanvas.toDataURL('image/jpeg', 1.0);
-                originalWidth = previewCanvas.width;
-                originalHeight = previewCanvas.height;
-            }
-
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (originalHeight * pdfWidth) / originalWidth;
-
-            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save('BEGHDADI_Converted.pdf');
-        });
-
-        // 5. تفعيل زر ضغط الصورة
-        const compressBtn = document.getElementById('compressBtn');
-        compressBtn.addEventListener('click', function() {
-            const previewImage = previewArea.querySelector('img');
-            const previewCanvas = previewArea.querySelector('canvas');
-            
-            if (!previewImage && !previewCanvas) {
-                alert('الرجاء تحميل صورة أولاً لتتمكن من ضغطها!');
-                return;
-            }
-
-            const tempCanvas = document.createElement('canvas');
-            const ctx = tempCanvas.getContext('2d');
-            let originalWidth, originalHeight;
-
-            if (previewImage) {
-                originalWidth = previewImage.naturalWidth;
-                originalHeight = previewImage.naturalHeight;
-                tempCanvas.width = originalWidth;
-                tempCanvas.height = originalHeight;
-                ctx.drawImage(previewImage, 0, 0);
-            } else if (previewCanvas) {
-                originalWidth = previewCanvas.width;
-                originalHeight = previewCanvas.height;
-                tempCanvas.width = originalWidth;
-                tempCanvas.height = originalHeight;
-                ctx.drawImage(previewCanvas, 0, 0);
-            }
-
-            const compressedDataUrl = tempCanvas.toDataURL('image/jpeg', 0.6);
-            previewArea.innerHTML = '';
-            const newImg = document.createElement('img');
-            newImg.src = compressedDataUrl;
-            newImg.style.maxWidth = '100%';
-            newImg.style.maxHeight = '400px';
-            newImg.style.borderRadius = '8px';
-            newImg.style.objectFit = 'contain';
-            previewArea.appendChild(newImg);
-
-            alert('تم ضغط الصورة بنجاح! يمكنك الآن تصديرها.');
-        });
-
-        // 6. تفعيل زر التعديل (الرسم على الملف)
+        // 2. تفعيل التعديل والتحويل الإجباري إلى A4
         const editBtn = document.getElementById('editBtn');
         editBtn.addEventListener('click', function() {
             const previewImage = previewArea.querySelector('img');
@@ -363,95 +248,173 @@
                 return;
             }
 
-            // تحويل الصورة إلى Canvas إذا لم تكن كذلك لتفعيل الرسم
-            if (previewImage) {
-                canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = previewImage.naturalWidth;
-                canvas.height = previewImage.naturalHeight;
-                ctx.drawImage(previewImage, 0, 0);
-                
-                canvas.style.maxWidth = '100%';
-                canvas.style.maxHeight = '400px';
-                canvas.style.borderRadius = '8px';
-                canvas.style.objectFit = 'contain';
+            // إنشاء Canvas بمقاس A4 (1240 x 1754 بكسل)
+            const a4Canvas = document.createElement('canvas');
+            a4Canvas.width = 1240;
+            a4Canvas.height = 1754;
+            ctx = a4Canvas.getContext('2d');
 
-                previewArea.innerHTML = '';
-                previewArea.appendChild(canvas);
+            // خلفية بيضاء للورقة
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, a4Canvas.width, a4Canvas.height);
+
+            // رسم الصورة أو ملف الـ PDF داخل ورقة الـ A4
+            if (previewImage) {
+                ctx.drawImage(previewImage, 0, 0, a4Canvas.width, a4Canvas.height);
+            } else if (canvas) {
+                ctx.drawImage(canvas, 0, 0, a4Canvas.width, a4Canvas.height);
             }
 
-            if (canvas) {
-                editModeActive = true;
-                canvas.style.border = '3px dashed #ffc107'; // إطار أصفر يوضح وضع التعديل
-                canvas.style.touchAction = 'none'; // منع التمرير أثناء الرسم على الهاتف
-                const ctx = canvas.getContext('2d');
-                ctx.lineWidth = 4;
-                ctx.lineCap = 'round';
-                ctx.strokeStyle = '#dc3545'; // لون القلم أحمر
+            // عرض لوحة الرسم الجديدة
+            a4Canvas.style.maxWidth = '100%';
+            a4Canvas.style.maxHeight = '400px';
+            a4Canvas.style.border = '3px dashed #ffc107';
+            a4Canvas.style.touchAction = 'none';
 
-                // وظائف استخراج إحداثيات اللمس والماوس
-                const getPos = (e) => {
-                    const rect = canvas.getBoundingClientRect();
-                    const scaleX = canvas.width / rect.width;
-                    const scaleY = canvas.height / rect.height;
-                    let clientX = e.clientX;
-                    let clientY = e.clientY;
-                    if (e.touches && e.touches.length > 0) {
-                        clientX = e.touches[0].clientX;
-                        clientY = e.touches[0].clientY;
+            previewArea.innerHTML = '';
+            previewArea.appendChild(a4Canvas);
+            canvas = a4Canvas;
+
+            // إظهار شريط الأدوات
+            editModeActive = true;
+            editToolbar.style.display = 'flex';
+            setTool('draw');
+
+            // وظائف الرسم والكتابة
+            const getPos = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                let clientX = e.clientX;
+                let clientY = e.clientY;
+                if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                }
+                return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+            };
+
+            const startAction = (e) => {
+                if(e.cancelable) e.preventDefault();
+                const pos = getPos(e);
+                
+                if (currentTool === 'text') {
+                    const userText = prompt('أدخل النص الذي تريد إضافته هنا:');
+                    if (userText) {
+                        ctx.font = 'bold 50px Arial';
+                        ctx.fillStyle = '#000000'; // نص أسود
+                        ctx.fillText(userText, pos.x, pos.y);
                     }
-                    return {
-                        x: (clientX - rect.left) * scaleX,
-                        y: (clientY - rect.top) * scaleY
-                    };
-                };
-
-                const startDraw = (e) => { isDrawing = true; draw(e); };
-                const stopDraw = () => { isDrawing = false; ctx.beginPath(); };
-                const draw = (e) => {
-                    if (!isDrawing) return;
-                    if(e.cancelable) e.preventDefault();
-                    const pos = getPos(e);
-                    ctx.lineTo(pos.x, pos.y);
-                    ctx.stroke();
+                } else {
+                    isDrawing = true;
                     ctx.beginPath();
                     ctx.moveTo(pos.x, pos.y);
-                };
+                }
+            };
 
-                // أحداث الماوس للكمبيوتر
-                canvas.onmousedown = startDraw;
-                canvas.onmousemove = draw;
-                canvas.onmouseup = stopDraw;
-                canvas.onmouseout = stopDraw;
+            const drawAction = (e) => {
+                if (!isDrawing || currentTool === 'text') return;
+                if(e.cancelable) e.preventDefault();
+                const pos = getPos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            };
 
-                // أحداث اللمس للهواتف
-                canvas.ontouchstart = startDraw;
-                canvas.ontouchmove = draw;
-                canvas.ontouchend = stopDraw;
+            const stopAction = () => { isDrawing = false; };
+
+            canvas.onmousedown = startAction;
+            canvas.onmousemove = drawAction;
+            canvas.onmouseup = stopAction;
+            canvas.onmouseout = stopAction;
+
+            canvas.ontouchstart = startAction;
+            canvas.ontouchmove = drawAction;
+            canvas.ontouchend = stopAction;
+        });
+
+        // تبديل الأدوات
+        function setTool(toolName) {
+            currentTool = toolName;
+            document.getElementById('toolDraw').classList.remove('tool-active');
+            document.getElementById('toolEraser').classList.remove('tool-active');
+            document.getElementById('toolText').classList.remove('tool-active');
+
+            if (toolName === 'draw') {
+                document.getElementById('toolDraw').classList.add('tool-active');
+                ctx.strokeStyle = '#dc3545';
+                ctx.lineWidth = 6;
+                ctx.lineCap = 'round';
+            } else if (toolName === 'eraser') {
+                document.getElementById('toolEraser').classList.add('tool-active');
+                ctx.strokeStyle = '#ffffff'; // لون أبيض للطمس
+                ctx.lineWidth = 40; // حجم كبير للمسح السريع
+                ctx.lineCap = 'round';
+            } else if (toolName === 'text') {
+                document.getElementById('toolText').classList.add('tool-active');
+            }
+        }
+
+        document.getElementById('toolDraw').onclick = () => setTool('draw');
+        document.getElementById('toolEraser').onclick = () => setTool('eraser');
+        document.getElementById('toolText').onclick = () => setTool('text');
+
+        // 3. تأكيد التعديلات
+        const confirmBtn = document.getElementById('confirmBtn');
+        confirmBtn.addEventListener('click', function() {
+            if (!editModeActive) return;
+            const canvas = previewArea.querySelector('canvas');
+            if (canvas) {
+                canvas.style.border = 'none';
+                canvas.onmousedown = null; canvas.onmousemove = null; canvas.onmouseup = null;
+                canvas.ontouchstart = null; canvas.ontouchmove = null; canvas.ontouchend = null;
+                editModeActive = false;
+                editToolbar.style.display = 'none';
+                alert('تم حفظ التعديلات بمقاس A4! يمكنك الآن استخراج الملف.');
             }
         });
 
-        // 7. تفعيل زر تأكيد التعديلات
-        const confirmBtn = document.getElementById('confirmBtn');
-        confirmBtn.addEventListener('click', function() {
-            if (!editModeActive) {
-                alert('أنت لست في وضع التعديل!');
-                return;
-            }
-            
+        // 4. تصدير كصورة
+        const exportImgBtn = document.getElementById('exportImgBtn');
+        exportImgBtn.addEventListener('click', function() {
             const canvas = previewArea.querySelector('canvas');
             if (canvas) {
-                // إزالة إطار التعديل وإيقاف أحداث الرسم
-                canvas.style.border = 'none';
-                canvas.onmousedown = null;
-                canvas.onmousemove = null;
-                canvas.onmouseup = null;
-                canvas.onmouseout = null;
-                canvas.ontouchstart = null;
-                canvas.ontouchmove = null;
-                canvas.ontouchend = null;
-                editModeActive = false;
-                alert('تم حفظ التعديلات! يمكنك الآن التصدير.');
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/jpeg', 1.0);
+                link.download = 'BEGHDADI_A4_Image.jpg';
+                link.click();
+            }
+        });
+
+        // 5. تصدير كـ PDF
+        const exportPdfBtn = document.getElementById('exportPdfBtn');
+        exportPdfBtn.addEventListener('click', function() {
+            const canvas = previewArea.querySelector('canvas');
+            if (canvas) {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'px', [canvas.width, canvas.height]); 
+                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+                pdf.save('BEGHDADI_A4_Converted.pdf');
+            }
+        });
+
+        // 6. الطباعة
+        document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+        // 7. ضغط الصورة
+        document.getElementById('compressBtn').addEventListener('click', function() {
+            const canvas = previewArea.querySelector('canvas');
+            if (canvas) {
+                const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                previewArea.innerHTML = '';
+                const newImg = document.createElement('img');
+                newImg.src = compressedDataUrl;
+                newImg.style.maxWidth = '100%';
+                newImg.style.maxHeight = '400px';
+                newImg.style.borderRadius = '8px';
+                newImg.style.objectFit = 'contain';
+                previewArea.appendChild(newImg);
+                alert('تم ضغط الملف بنجاح!');
             }
         });
     </script>
