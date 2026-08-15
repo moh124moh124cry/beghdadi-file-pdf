@@ -107,6 +107,7 @@
             padding: 10px;
             box-sizing: border-box;
             overflow: hidden;
+            position: relative;
         }
 
         /* لوحة التحكم (الأزرار السفلية) */
@@ -177,6 +178,10 @@
     <script>
         const fileInput = document.getElementById('fileInput');
         const previewArea = document.getElementById('previewArea');
+        
+        // متغيرات للتحكم في وضع التعديل (الرسم)
+        let isDrawing = false;
+        let editModeActive = false;
 
         // 1. تفعيل زر تحميل ومعاينة الملفات
         fileInput.addEventListener('change', function(event) {
@@ -185,7 +190,6 @@
             if (file) {
                 const fileURL = URL.createObjectURL(file);
                 const fileType = file.type;
-
                 previewArea.innerHTML = ''; 
 
                 if (fileType.startsWith('image/')) {
@@ -248,7 +252,6 @@
         exportImgBtn.addEventListener('click', function() {
             const previewImage = previewArea.querySelector('img');
             const previewCanvas = previewArea.querySelector('canvas');
-            
             const link = document.createElement('a');
 
             if (previewImage) {
@@ -281,7 +284,6 @@
 
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF('p', 'mm', 'a4'); 
-            
             let imgData = '';
             let originalWidth = 0;
             let originalHeight = 0;
@@ -306,6 +308,151 @@
 
             pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
             pdf.save('BEGHDADI_Converted.pdf');
+        });
+
+        // 5. تفعيل زر ضغط الصورة
+        const compressBtn = document.getElementById('compressBtn');
+        compressBtn.addEventListener('click', function() {
+            const previewImage = previewArea.querySelector('img');
+            const previewCanvas = previewArea.querySelector('canvas');
+            
+            if (!previewImage && !previewCanvas) {
+                alert('الرجاء تحميل صورة أولاً لتتمكن من ضغطها!');
+                return;
+            }
+
+            const tempCanvas = document.createElement('canvas');
+            const ctx = tempCanvas.getContext('2d');
+            let originalWidth, originalHeight;
+
+            if (previewImage) {
+                originalWidth = previewImage.naturalWidth;
+                originalHeight = previewImage.naturalHeight;
+                tempCanvas.width = originalWidth;
+                tempCanvas.height = originalHeight;
+                ctx.drawImage(previewImage, 0, 0);
+            } else if (previewCanvas) {
+                originalWidth = previewCanvas.width;
+                originalHeight = previewCanvas.height;
+                tempCanvas.width = originalWidth;
+                tempCanvas.height = originalHeight;
+                ctx.drawImage(previewCanvas, 0, 0);
+            }
+
+            const compressedDataUrl = tempCanvas.toDataURL('image/jpeg', 0.6);
+            previewArea.innerHTML = '';
+            const newImg = document.createElement('img');
+            newImg.src = compressedDataUrl;
+            newImg.style.maxWidth = '100%';
+            newImg.style.maxHeight = '400px';
+            newImg.style.borderRadius = '8px';
+            newImg.style.objectFit = 'contain';
+            previewArea.appendChild(newImg);
+
+            alert('تم ضغط الصورة بنجاح! يمكنك الآن تصديرها.');
+        });
+
+        // 6. تفعيل زر التعديل (الرسم على الملف)
+        const editBtn = document.getElementById('editBtn');
+        editBtn.addEventListener('click', function() {
+            const previewImage = previewArea.querySelector('img');
+            let canvas = previewArea.querySelector('canvas');
+
+            if (!previewImage && !canvas) {
+                alert('الرجاء تحميل ملف أولاً لتتمكن من تعديله!');
+                return;
+            }
+
+            // تحويل الصورة إلى Canvas إذا لم تكن كذلك لتفعيل الرسم
+            if (previewImage) {
+                canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = previewImage.naturalWidth;
+                canvas.height = previewImage.naturalHeight;
+                ctx.drawImage(previewImage, 0, 0);
+                
+                canvas.style.maxWidth = '100%';
+                canvas.style.maxHeight = '400px';
+                canvas.style.borderRadius = '8px';
+                canvas.style.objectFit = 'contain';
+
+                previewArea.innerHTML = '';
+                previewArea.appendChild(canvas);
+            }
+
+            if (canvas) {
+                editModeActive = true;
+                canvas.style.border = '3px dashed #ffc107'; // إطار أصفر يوضح وضع التعديل
+                canvas.style.touchAction = 'none'; // منع التمرير أثناء الرسم على الهاتف
+                const ctx = canvas.getContext('2d');
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = '#dc3545'; // لون القلم أحمر
+
+                // وظائف استخراج إحداثيات اللمس والماوس
+                const getPos = (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const scaleX = canvas.width / rect.width;
+                    const scaleY = canvas.height / rect.height;
+                    let clientX = e.clientX;
+                    let clientY = e.clientY;
+                    if (e.touches && e.touches.length > 0) {
+                        clientX = e.touches[0].clientX;
+                        clientY = e.touches[0].clientY;
+                    }
+                    return {
+                        x: (clientX - rect.left) * scaleX,
+                        y: (clientY - rect.top) * scaleY
+                    };
+                };
+
+                const startDraw = (e) => { isDrawing = true; draw(e); };
+                const stopDraw = () => { isDrawing = false; ctx.beginPath(); };
+                const draw = (e) => {
+                    if (!isDrawing) return;
+                    if(e.cancelable) e.preventDefault();
+                    const pos = getPos(e);
+                    ctx.lineTo(pos.x, pos.y);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x, pos.y);
+                };
+
+                // أحداث الماوس للكمبيوتر
+                canvas.onmousedown = startDraw;
+                canvas.onmousemove = draw;
+                canvas.onmouseup = stopDraw;
+                canvas.onmouseout = stopDraw;
+
+                // أحداث اللمس للهواتف
+                canvas.ontouchstart = startDraw;
+                canvas.ontouchmove = draw;
+                canvas.ontouchend = stopDraw;
+            }
+        });
+
+        // 7. تفعيل زر تأكيد التعديلات
+        const confirmBtn = document.getElementById('confirmBtn');
+        confirmBtn.addEventListener('click', function() {
+            if (!editModeActive) {
+                alert('أنت لست في وضع التعديل!');
+                return;
+            }
+            
+            const canvas = previewArea.querySelector('canvas');
+            if (canvas) {
+                // إزالة إطار التعديل وإيقاف أحداث الرسم
+                canvas.style.border = 'none';
+                canvas.onmousedown = null;
+                canvas.onmousemove = null;
+                canvas.onmouseup = null;
+                canvas.onmouseout = null;
+                canvas.ontouchstart = null;
+                canvas.ontouchmove = null;
+                canvas.ontouchend = null;
+                editModeActive = false;
+                alert('تم حفظ التعديلات! يمكنك الآن التصدير.');
+            }
         });
     </script>
 </body>
