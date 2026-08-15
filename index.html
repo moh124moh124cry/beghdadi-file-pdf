@@ -155,7 +155,7 @@
     </div>
 
     <div class="controls">
-      <button class="btn-edit" id="editBtn">تعديل الكتابة (A4)</button>
+      <button class="btn-edit" id="editBtn">تعديل الكتابة على الصورة</button>
       <button class="btn-confirm" id="confirmBtn">تأكيد التعديلات</button>
       <button class="btn-export-pdf" id="exportPdfBtn">تصدير كـ PDF</button>
       <button class="btn-print" id="printBtn">طباعة</button>
@@ -237,8 +237,9 @@
       try{
         if(file.type.startsWith('image/')||/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)){
           loadedImage=await readImage(file);
-          const maxWidth=1600;
-          const ratio=Math.min(1,maxWidth/loadedImage.naturalWidth);
+          /* نحافظ على أبعاد الصورة ونسبة الطول إلى العرض؛ لا نحولها إلى A4 */
+          const maxDimension=2400;
+          const ratio=Math.min(1,maxDimension/Math.max(loadedImage.naturalWidth,loadedImage.naturalHeight));
           const width=Math.round(loadedImage.naturalWidth*ratio);
           const height=Math.round(loadedImage.naturalHeight*ratio);
           prepareCanvas(width,height);
@@ -349,7 +350,7 @@
       if(!originalCanvas){alert('الرجاء تحميل ملف أولاً.');return;}
       const link=document.createElement('a');
       link.href=canvas.toDataURL('image/jpeg',.95);
-      link.download='BEGHDADI_A4_Image.jpg';link.click();
+      link.download='BEGHDADI_Edited_Image.jpg';link.click();
     });
 
     document.getElementById('exportPdfBtn').addEventListener('click',()=>{
@@ -358,7 +359,7 @@
       const {jsPDF}=window.jspdf;
       const pdf=new jsPDF({orientation:canvas.width>canvas.height?'l':'p',unit:'px',format:[canvas.width,canvas.height],hotfixes:['px_scaling']});
       pdf.addImage(canvas.toDataURL('image/jpeg',.95),'JPEG',0,0,canvas.width,canvas.height);
-      pdf.save('BEGHDADI_A4_Converted.pdf');
+      pdf.save('BEGHDADI_Edited.pdf');
     });
 
     document.getElementById('printBtn').addEventListener('click',()=>window.print());
