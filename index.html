@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BEGHDADI FILE PDF</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --bg-color: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* الشعار العلوي */
+        header {
+            background-color: #333;
+            color: white;
+            width: 100%;
+            text-align: center;
+            padding: 15px 0;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            margin: 20px auto;
+            text-align: center;
+        }
+
+        /* بانر صورة الأبناء */
+        .kids-banner {
+            width: 100%;
+            height: 200px;
+            background-color: #e9ecef;
+            border: 2px dashed #adb5bd;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            color: #6c757d;
+            font-size: 18px;
+            overflow: hidden;
+        }
+
+        .kids-banner img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none; /* سيتم تفعيلها عند وضع مسار الصورة */
+        }
+
+        /* زر رفع الملفات */
+        .upload-btn {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 24px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: 0.3s;
+        }
+
+        .upload-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* إخفاء زر الإدخال الافتراضي */
+        #fileInput {
+            display: none;
+        }
+
+        /* مساحة المعاينة */
+        .preview-area {
+            width: 100%;
+            min-height: 300px;
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* لوحة التحكم (الأزرار السفلية) */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .controls button {
+            padding: 10px 15px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: white;
+            transition: 0.3s;
+        }
+
+        .btn-edit { background-color: #ffc107; color: black !important; }
+        .btn-confirm { background-color: var(--success-color); }
+        .btn-export-pdf { background-color: #dc3545; }
+        .btn-print { background-color: var(--secondary-color); }
+        .btn-compress { background-color: #17a2b8; }
+        .btn-export-img { background-color: #6610f2; }
+
+        .controls button:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        BEGHDADI FILE PDF
+    </header>
+
+    <div class="container">
+        
+        <!-- مساحة بانر الأبناء -->
+        <div class="kids-banner" id="bannerArea">
+            <span>مساحة مخصصة لصورة الأبناء ❤️</span>
+            <!-- قم بتغيير 'kids.jpg' إلى اسم صورة أبنائك بعد رفعها مع الملفات -->
+            <!-- <img src="kids.jpg" alt="صورة الأبناء" style="display: block;"> -->
+        </div>
+
+        <!-- زر تحميل الملف -->
+        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">حمل ملف</button>
+        <input type="file" id="fileInput" accept="image/*, .pdf">
+
+        <!-- مساحة المعاينة -->
+        <div class="preview-area" id="previewArea">
+            <span style="color: #6c757d;">ستظهر معاينة الملف هنا...</span>
+        </div>
+
+        <!-- أزرار التحكم -->
+        <div class="controls">
+            <button class="btn-edit" id="editBtn">تعديل الملف</button>
+            <button class="btn-confirm" id="confirmBtn">تأكيد التعديلات</button>
+            <button class="btn-export-pdf" id="exportPdfBtn">تصدير كـ PDF</button>
+            <button class="btn-print" id="printBtn">طباعة</button>
+            <button class="btn-compress" id="compressBtn">ضغط الصورة</button>
+            <button class="btn-export-img" id="exportImgBtn">تصدير كصورة</button>
+        </div>
+
+    </div>
+
+</body>
+</html>
