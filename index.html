@@ -168,3 +168,45 @@
 
 </body>
 </html>
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const previewArea = document.getElementById('previewArea');
+
+    fileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        
+        if (file) {
+            // إنشاء رابط محلي مؤقت للملف لتمكين عرضه
+            const fileURL = URL.createObjectURL(file);
+            const fileType = file.type;
+
+            // تفريغ مساحة المعاينة من النص الافتراضي
+            previewArea.innerHTML = '';
+
+            if (fileType.startsWith('image/')) {
+                // التعامل مع الصور
+                const img = document.createElement('img');
+                img.src = fileURL;
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '400px'; // تحديد أقصى ارتفاع ليتناسب مع شاشة الهاتف
+                img.style.borderRadius = '8px';
+                img.style.objectFit = 'contain';
+                previewArea.appendChild(img);
+            } 
+            else if (fileType === 'application/pdf') {
+                // التعامل مع ملفات PDF
+                const iframe = document.createElement('iframe');
+                iframe.src = fileURL;
+                iframe.width = '100%';
+                iframe.height = '400px';
+                iframe.style.border = 'none';
+                iframe.style.borderRadius = '8px';
+                previewArea.appendChild(iframe);
+            } 
+            else {
+                // رسالة خطأ في حال اختيار ملف غير مدعوم
+                previewArea.innerHTML = '<span style="color: #dc3545;">عذراً، يرجى رفع صورة أو ملف PDF فقط.</span>';
+            }
+        }
+    });
+</script>
