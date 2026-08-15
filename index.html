@@ -8,6 +8,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa+Ink:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
     :root {
@@ -67,6 +70,7 @@
       padding:8px 15px;font-size:14px;border:0;border-radius:5px;
       cursor:pointer;font-weight:bold;background:#dc3545;color:#fff;
     }
+    #handwritingBtn { background:#6f42c1; }
 
     .preview-area {
       width:100%;min-height:300px;background-color:var(--panel-bg);
@@ -138,6 +142,7 @@
     <!-- حُذفت أزرار الرسم الأحمر والممحاة، وبقي تعديل النص فقط -->
     <div class="edit-toolbar" id="editToolbar">
       <span class="edit-hint">اضغط على أي كلمة لتعديلها مباشرة، امسح محتواها لحذفها.</span>
+      <button id="handwritingBtn" type="button">✍️ تحويل الصفحة إلى خط يد</button>
       <button id="deleteSelectedBtn" type="button">حذف النص المحدد</button>
     </div>
 
@@ -281,7 +286,7 @@
           x:w.bbox.x0,y:w.bbox.y0,
           width:Math.max(18,w.bbox.x1-w.bbox.x0),
           height:Math.max(18,w.bbox.y1-w.bbox.y0),
-          deleted:false
+          deleted:false,handwriting:false
         }));
         renderTextLayer();
         editActive=true;textLayer.classList.remove('locked');editToolbar.style.display='flex';
@@ -305,13 +310,22 @@
         Object.assign(el.style,{
           left:(item.x*canvasScale)+'px',top:(item.y*canvasScale)+'px',
           minWidth:(item.width*canvasScale)+'px',minHeight:(item.height*canvasScale)+'px',
-          fontSize:(Math.max(12,item.height*.8)*canvasScale)+'px'
+          fontSize:(Math.max(12,item.height*.8)*canvasScale)+'px',
+          fontFamily:item.handwriting?'"Aref Ruqaa Ink", serif':'Arial, sans-serif'
         });
         el.addEventListener('focus',()=>selectedText=el);
         el.addEventListener('input',()=>{item.text=el.textContent;});
         textLayer.appendChild(el);
       });
     }
+
+    document.getElementById('handwritingBtn').addEventListener('click',async()=>{
+      if(!editActive||!textItems.length){alert('اضغط أولاً على زر تعديل الكتابة على الصورة.');return;}
+      try{await document.fonts.load('32px "Aref Ruqaa Ink"');}catch(error){console.warn(error);}
+      textItems.forEach(item=>{if(!item.deleted)item.handwriting=true;});
+      selectedText=null;renderTextLayer();
+      alert('تم تطبيق الخط اليدوي. اضغط تأكيد التعديلات لحفظه.');
+    });
 
     document.getElementById('deleteSelectedBtn').addEventListener('click',()=>{
       if(!selectedText){alert('اضغط أولاً على النص الذي تريد حذفه.');return;}
@@ -320,8 +334,9 @@
       selectedText.remove();selectedText=null;
     });
 
-    document.getElementById('confirmBtn').addEventListener('click',()=>{
+    document.getElementById('confirmBtn').addEventListener('click',async()=>{
       if(!editActive){return;}
+      if(textItems.some(item=>item.handwriting)){try{await document.fonts.load('32px "Aref Ruqaa Ink"');}catch(error){console.warn(error);}}
       textLayer.querySelectorAll('.ocr-text').forEach(el=>{
         const item=textItems.find(x=>String(x.id)===el.dataset.id);
         if(item)item.text=el.textContent;
@@ -329,13 +344,15 @@
       ctx.clearRect(0,0,canvas.width,canvas.height);
       ctx.drawImage(originalCanvas,0,0);
       textItems.forEach(item=>{
-        const changed=item.deleted||item.text!==item.original;
+        const changed=item.deleted||item.handwriting||item.text!==item.original;
         if(!changed)return;
         ctx.fillStyle='#fff';
         ctx.fillRect(item.x-3,item.y-3,item.width+8,item.height+8);
         if(item.deleted||!item.text.trim())return;
         const size=Math.max(12,item.height*.8);
-        ctx.fillStyle='#000';ctx.font=`bold ${size}px Arial`;ctx.textBaseline='top';
+        ctx.fillStyle='#000';
+        ctx.font=item.handwriting?`700 ${size}px "Aref Ruqaa Ink"`:`bold ${size}px Arial`;
+        ctx.textBaseline='top';
         ctx.direction=/[\u0600-\u06FF]/.test(item.text)?'rtl':'ltr';
         const textX=ctx.direction==='rtl'?item.x+item.width:item.x;
         ctx.fillText(item.text,textX,item.y,Math.max(item.width*2,80));
